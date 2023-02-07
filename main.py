@@ -38,8 +38,11 @@ while offset < total_tracks:
         dates.append(datetime.datetime.strptime(track["added_at"], "%Y-%m-%dT%H:%M:%SZ"))
         names.append(track["track"]["name"])
         # Extract the primary genre of the track
-        genre = track["track"]["album"]["artists"][0]["genres"][0] if track["track"]["album"]["artists"][0][
-            "genres"] else "Unknown"
+        artist = sp.artist(track["track"]["artists"][0]['id'])
+        if len(artist["genres"]) > 0:
+            genre = artist["genres"][0]
+        else:
+            genre = "unknown"
         genres.append(genre)
     # Increment the offset
     offset += limit
@@ -48,20 +51,19 @@ while offset < total_tracks:
 df = pd.DataFrame({"date": dates, "name": names, "genre": genres})
 
 # Add a column with the year and month of each date
-df["month"] = df["date"].dt.to_period("M")
+df["month"] = df["date"].dt.strftime("%Y-%m")
 
 # Group the data by month and count the number of songs added each month
 monthly_counts = df.groupby("month").size()
 
-# Add the list of songs to the text array of the Bar object
-songs = []
-for month in monthly_counts.index:
-    tracks_in_month = df[df["month"] == month]["name"]
-    songs.append("<br>".join(tracks_in_month))
 
+# Group the data by month and genre and count the number of songs in each group
+monthly_genre_counts = df.groupby(["month", "genre"]).size().reset_index(name='counts')
 
 # Use plotly to present the plot in an interactive way
-fig = px.bar(x=monthly_counts.index.strftime("%Y-%m"), y=monthly_counts.values, hover_name=songs)
+fig = px.bar(monthly_genre_counts, x="month", y="counts", color="genre",
+             hover_name=monthly_genre_counts["genre"] + ": " + monthly_genre_counts["counts"].astype(str))
+
 fig.update_layout(title="Number of songs added to library each month", xaxis_title="Month",
                   yaxis_title="Number of songs added", hoverlabel=dict(font=dict(size=10)))
 fig.show()
