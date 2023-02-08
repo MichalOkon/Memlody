@@ -33,6 +33,7 @@ class Application:
         dates = []
         names = []
         genres = []
+        artists = []
         # Retrieve the tracks in multiple requests
         while offset < total_tracks:
             results = self.sp.current_user_saved_tracks(limit=limit, offset=offset)
@@ -48,12 +49,13 @@ class Application:
                     genre = artist["genres"][0]
                 else:
                     genre = "unknown"
+                artists.append(artist["name"])
                 genres.append(genre)
             # Increment the offset
             offset += limit
 
         # Create a pandas DataFrame from the lists
-        self.data = pd.DataFrame({"date": dates, "name": names, "genre": genres})
+        self.data = pd.DataFrame({"date": dates, "name": names, "artist": artists, "genre": genres})
 
         # Add a column with the year and month of each date
         self.data["month"] = self.data["date"].dt.strftime("%Y-%m")
@@ -78,6 +80,7 @@ class Application:
         fig.update_layout(title="Number of songs added to library each month", xaxis_title="Month",
                           yaxis_title="Number of songs added", hoverlabel=dict(font=dict(size=10)))
         fig.show()
+
 
 
 if __name__ == "__main__":
