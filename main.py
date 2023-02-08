@@ -6,7 +6,7 @@ import plotly.express as px
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 import datetime
-
+from clustering import Clustering
 
 class Application:
     def __init__(self):
@@ -35,7 +35,7 @@ class Application:
         genres = []
         artists = []
         # Retrieve the tracks in multiple requests
-        while offset < total_tracks:
+        while offset < total_tracks and offset < 50:
             results = self.sp.current_user_saved_tracks(limit=limit, offset=offset)
             saved_tracks = results["items"]
 
@@ -81,9 +81,13 @@ class Application:
                           yaxis_title="Number of songs added", hoverlabel=dict(font=dict(size=10)))
         fig.show()
 
-
+    def plot_artist_genre_heatmap(self):
+        cl = Clustering(self.data)
+        cl.create_genre_vectors()
+        cl.create_genre_artist_heatmap()
 
 if __name__ == "__main__":
     app = Application()
     app.get_data()
     app.plot_monthly_counts()
+    app.plot_artist_genre_heatmap()
