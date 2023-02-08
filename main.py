@@ -8,6 +8,7 @@ import pandas as pd
 import datetime
 from clustering import Clustering
 
+
 class Application:
     def __init__(self):
         self.client_id = os.environ.get('SPOTIPY_CLIENT_ID')
@@ -22,43 +23,51 @@ class Application:
                                                             self.scope))
         self.data = None
 
-    def get_data(self):
-        # Get the user's saved tracks and the total number of saved tracks
-        results = self.sp.current_user_saved_tracks()
-        total_tracks = results["total"]
+    def get_data(self, load_data=True):
 
-        limit = 50
-        offset = 0
+        if os.path.exists("data.csv") and load_data:
+            self.data = pd.read_csv("data.csv")
+        else:
+            # Get the user's saved tracks and the total number of saved tracks
+            results = self.sp.current_user_saved_tracks()
+            total_tracks = results["total"]
 
-        dates = []
-        names = []
-        genres = []
-        artists = []
-        # Retrieve the tracks in multiple requests
-        while offset < total_tracks and offset < 50:
-            results = self.sp.current_user_saved_tracks(limit=limit, offset=offset)
-            saved_tracks = results["items"]
+            limit = 50
+            offset = 0
 
-            # Extract the relevant information and store it in the lists
-            for track in saved_tracks:
-                dates.append(datetime.datetime.strptime(track["added_at"], "%Y-%m-%dT%H:%M:%SZ"))
-                names.append(track["track"]["name"])
-                # Extract the primary genre of the track
-                artist = self.sp.artist(track["track"]["artists"][0]['id'])
-                if len(artist["genres"]) > 0:
-                    genre = artist["genres"][0]
-                else:
-                    genre = "unknown"
-                artists.append(artist["name"])
-                genres.append(genre)
-            # Increment the offset
-            offset += limit
+            dates = []
+            names = []
+            genres = []
+            artists = []
+            # Retrieve the tracks in multiple requests
+            while offset < total_tracks:
+                results = self.sp.current_user_saved_tracks(limit=limit, offset=offset)
+                saved_tracks = results["items"]
 
-        # Create a pandas DataFrame from the lists
-        self.data = pd.DataFrame({"date": dates, "name": names, "artist": artists, "genre": genres})
+                # Extract the relevant information and store it in the lists
+                for track in saved_tracks:
+                    date = datetime.datetime.strptime(track["added_at"], "%Y-%m-%dT%H:%M:%SZ")
+                    name = track["track"]["name"]
+                    # Extract the primary genre of the track
+                    artist = self.sp.artist(track["track"]["artists"][0]['id'])
+                    artist_genres = artist["genres"]
+                    if len(artist_genres) == 0:
+                        artist_genres = ["unknown"]
+                    for genre in artist_genres:
+                        dates.append(date)
+                        names.append(name)
+                        artists.append(artist["name"])
+                        genres.append(genre)
+                # Increment the offset
+                offset += limit
 
-        # Add a column with the year and month of each date
-        self.data["month"] = self.data["date"].dt.strftime("%Y-%m")
+            # Create a pandas DataFrame from the lists
+            self.data = pd.DataFrame({"date": dates, "name": names, "artist": artists, "genre": genres})
+
+            # Add a column with the year and month of each date
+            self.data["month"] = self.data["date"].dt.strftime("%Y-%m")
+
+            self.data.to_csv("data.csv")
 
     def calculate_monthly_counts(self):
         # Group the data by month and count the number of songs added each month
@@ -86,8 +95,15 @@ class Application:
         cl.create_genre_vectors()
         cl.create_genre_artist_heatmap()
 
+    def cluster(self):
+        cl = Clustering(self.data)
+        cl.create_genre_vectors()
+        cl.perform_hierarchical_clustering()
+
+
 if __name__ == "__main__":
     app = Application()
     app.get_data()
-    app.plot_monthly_counts()
-    app.plot_artist_genre_heatmap()
+    # app.plot_monthly_counts()
+    # app.plot_artist_genre_heatmap()
+    app.cluster()

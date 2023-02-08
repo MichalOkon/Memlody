@@ -1,5 +1,8 @@
 import plotly.express as px
 import pandas as pd
+import scipy.spatial.distance as spd
+import scipy.cluster.hierarchy as sch
+import matplotlib.pyplot as plt
 
 
 class Clustering:
@@ -46,3 +49,34 @@ class Clustering:
         # Plot the genre vectors using a heatmap
         fig = px.imshow(df, color_continuous_scale='reds', labels={'x': 'Genres', 'y': 'Artists'})
         fig.show()
+
+    def perform_hierarchical_clustering(self):
+        df = pd.DataFrame(self.genre_vectors).T
+
+        metric = "euclidean"
+        # Compute the distance matrix using selected metric
+        distance_matrix = spd.pdist(df, metric=metric)
+
+        # Perform hierarchical clustering with three different methods and plot dendrograms
+        linkage = sch.linkage(distance_matrix, method='complete')
+
+        plt.figure(figsize=(30, 20))
+        sch.dendrogram(linkage, labels=df.index)
+        plt.savefig(f'dendro_complete_{metric}.png', dpi=300)
+        plt.show()
+
+        plt.clf()
+        linkage = sch.linkage(distance_matrix, method='single')
+
+        plt.figure(figsize=(30, 20))
+        sch.dendrogram(linkage, labels=df.index)
+        plt.savefig(f'dendro_single_{metric}.png', dpi=300)
+        plt.show()
+
+        plt.clf()
+        linkage = sch.linkage(distance_matrix, method='average')
+
+        plt.figure(figsize=(30, 20))
+        sch.dendrogram(linkage, labels=df.index)
+        plt.savefig(f'dendro_average_{metric}.png', dpi=300)
+        plt.show()
